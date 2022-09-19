@@ -8,7 +8,7 @@ from .common import *
 
 
 class Encoder(nn.Module):
-    def __init__(self, in_channels=3, depth=3):
+    def __init__(self, n_resgroups, n_resblocks,in_channels=3, depth=3):
         super(Encoder, self).__init__()
 
         # Shuffle pixels to expand in channel dimension
@@ -19,7 +19,8 @@ class Encoder(nn.Module):
         relu = nn.LeakyReLU(0.2, True)
         
         # FF_RCAN or FF_Resblocks
-        self.interpolate = Interpolation(5, 12, in_channels * (4**depth), act=relu)
+        #self.interpolate = Interpolation(5, 12, in_channels * (4**depth), act=relu)
+        self.interpolate = Interpolation(n_resgroups, n_resblocks, in_channels * (4**depth), act=relu)
         
     def forward(self, x1, x2):
         """
@@ -47,10 +48,10 @@ class Decoder(nn.Module):
 
 
 class CAIN(nn.Module):
-    def __init__(self, depth=3):
+    def __init__(self, args, depth=3):
         super(CAIN, self).__init__()
         
-        self.encoder = Encoder(in_channels=3, depth=depth)
+        self.encoder = Encoder(args.n_resgroups, args.n_resblocks, in_channels=3, depth=depth)
         self.decoder = Decoder(depth=depth)
 
     def forward(self, x1, x2):

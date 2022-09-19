@@ -102,7 +102,9 @@ def train(args, epoch):
         # Forward
         optimizer.zero_grad()
         out, feats = model(im1, im2)
-        loss, loss_specific = criterion(out, gt, None, feats)
+
+        ##TODO: add im1, im2 as input, change all usage accordingly
+        loss, loss_specific = criterion(im1, im2, out, gt, None, feats)
 
         # Save loss values
         for k, v in losses.items():
@@ -165,7 +167,7 @@ def test(args, epoch, eval_alpha=0.5):
             out, feats = model(im1, im2)
 
             # Save loss values
-            loss, loss_specific = criterion(out, gt, None, feats)
+            loss, loss_specific = criterion(im1, im2, out, gt, None, feats)
             for k, v in losses.items():
                 if k != 'total':
                     v.update(loss_specific[k].item())

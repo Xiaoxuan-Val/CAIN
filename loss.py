@@ -2,7 +2,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.models as models
+from model.cain import CAIN
 import pytorch_msssim
+import utils
+from torch.optim import Adam
 from model.common import sub_mean, InOutPaddings, meanShift, PixelShuffle, ResidualGroup, conv
 
 class MeanShift(nn.Conv2d):
@@ -15,6 +18,28 @@ class MeanShift(nn.Conv2d):
         self.bias.data.div_(std)
         self.requires_grad = False
 
+#TODO: write a loss function to claculate teacher loss
+class TeacherLoss(nn.Module):
+    def __init__(self, loss_type):
+        super(TeacherLoss, self).__init__()
+
+        model = CAIN(n_resgroups = 5, n_resblocks = 12,depth=args.depth)
+        self.model = torch.nn.DataParallel(model).to(device)
+
+        self.args.resume_exp = None
+        self.args.exp_name = "checkpoint/pretrained_cain.pth"
+
+        self.args.mode = "test"
+
+        optimizer = Adam(model.parameters(), lr=args.lr, betas=(args.beta1, args.beta2))
+
+        util.load_checkpoint(self.args, self.model, optimizer, fix_loaded = True)
+
+    #TODO: require im1, im2 as input
+    def forward(self, im1, im2, sr, hr):
+        out, feats = self.model(im1, im2)
+        loss = nn.L1Loss(sr, out)
+        return loss
 
 class VGG(nn.Module):
     def __init__(self, loss_type):
@@ -46,7 +71,7 @@ class VGG(nn.Module):
         # self.criterion = nn.L1Loss()
         self.conv_index = conv_index
 
-    def forward(self, sr, hr):
+    def forward(self, im1, im2, sr, hr):
         def _forward(x):
             x = self.sub_mean(x)
             x = self.vgg(x)
@@ -242,6 +267,7 @@ class Adversarial(nn.Module):
 # https://github.com/caogang/wgan-gp/blob/master/gan_cifar10.py
 
 
+
 # Wrapper of loss functions
 class Loss(nn.modules.loss._Loss):
     def __init__(self, args):
@@ -254,6 +280,8 @@ class Loss(nn.modules.loss._Loss):
             weight, loss_type = loss.split('*')
             if loss_type == 'MSE':
                 loss_function = nn.MSELoss()
+            elif loss_type == 'TL':
+                loss_function == nn.TeacherLoss()
             elif loss_type == 'L1':
                 loss_function = nn.L1Loss()
             elif loss_type.find('VGG') >= 0:
@@ -285,8 +313,8 @@ class Loss(nn.modules.loss._Loss):
         if args.cuda:# and args.n_GPUs > 1:
             self.loss_module = nn.DataParallel(self.loss_module)
 
-
-    def forward(self, sr, hr, model_enc=None, feats=None, fake_imgs=None):
+    #requires im1, im2
+    def forward(self, im1, im2, sr, hr, model_enc=None, feats=None, fake_imgs=None):
         loss = 0
         losses = {}
         for i, l in enumerate(self.loss):
@@ -296,7 +324,7 @@ class Loss(nn.modules.loss._Loss):
                         fake_imgs = [None, None, None]
                     _loss = l['function'](sr, hr, fake_imgs[0], fake_imgs[1], fake_imgs[2])
                 else:
-                    _loss = l['function'](sr, hr)
+                    _loss = l['function'](im1, im2, sr, hr)
                 effective_loss = l['weight'] * _loss
                 losses[l['type']] = effective_loss
                 loss += effective_loss
