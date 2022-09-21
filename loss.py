@@ -20,20 +20,21 @@ class MeanShift(nn.Conv2d):
 
 #TODO: write a loss function to claculate teacher loss
 class TeacherLoss(nn.Module):
-    def __init__(self, loss_type):
+    def __init__(self, args):
         super(TeacherLoss, self).__init__()
 
-        model = CAIN(n_resgroups = 5, n_resblocks = 12,depth=args.depth)
-        self.model = torch.nn.DataParallel(model).to(device)
+        self.args = args
+        self.model = CAIN(args, n_resgroups = 5, n_resblocks = 12,depth=3)
+        #self.model = torch.nn.DataParallel(model).to(device)
 
         self.args.resume_exp = None
-        self.args.exp_name = "checkpoint/pretrained_cain.pth"
+        self.args.exp_name = "CAIN_student_train"
 
-        self.args.mode = "test"
+        #self.args.mode = "test"
 
-        optimizer = Adam(model.parameters(), lr=args.lr, betas=(args.beta1, args.beta2))
+        optimizer = Adam(self.model.parameters(), lr=args.lr, betas=(args.beta1, args.beta2))
 
-        util.load_checkpoint(self.args, self.model, optimizer, fix_loaded = True)
+        utils.load_checkpoint(self.args, self.model, optimizer, fix_loaded = True)
 
     #TODO: require im1, im2 as input
     def forward(self, im1, im2, sr, hr):
@@ -281,7 +282,7 @@ class Loss(nn.modules.loss._Loss):
             if loss_type == 'MSE':
                 loss_function = nn.MSELoss()
             elif loss_type == 'TL':
-                loss_function == nn.TeacherLoss()
+                loss_function == TeacherLoss(args)
             elif loss_type == 'L1':
                 loss_function = nn.L1Loss()
             elif loss_type.find('VGG') >= 0:

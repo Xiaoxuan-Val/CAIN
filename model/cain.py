@@ -48,10 +48,10 @@ class Decoder(nn.Module):
 
 
 class CAIN(nn.Module):
-    def __init__(self, args, depth=3):
+    def __init__(self, args, n_resgroups = 3, n_resblocks = 12, depth=3):
         super(CAIN, self).__init__()
         
-        self.encoder = Encoder(args.n_resgroups, args.n_resblocks, in_channels=3, depth=depth)
+        self.encoder = Encoder(n_resgroups = 3, n_resblocks = 12, in_channels=3, depth=depth)
         self.decoder = Decoder(depth=depth)
 
     def forward(self, x1, x2):

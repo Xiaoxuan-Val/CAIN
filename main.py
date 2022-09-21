@@ -47,7 +47,7 @@ if args.model.lower() == 'cain_encdec':
 elif args.model.lower() == 'cain':
     from model.cain import CAIN
     print("Building model: CAIN")
-    model = CAIN(depth=args.depth)
+    model = CAIN(args, n_resgroups=args.n_resgroups, n_resblocks = args.n_resblocks, depth=args.depth)
 elif args.model.lower() == 'cain_noca':
     from model.cain_noca import CAIN_NoCA
     print("Building model: CAIN_NoCA")
@@ -56,6 +56,7 @@ else:
     raise NotImplementedError("Unknown model!")
 # Just make every model to DataParallel
 model = torch.nn.DataParallel(model).to(device)
+
 #print(model)
 
 ##### Define Loss & Optimizer #####
@@ -94,8 +95,9 @@ def train(args, epoch):
     criterion.train()
 
     t = time.time()
+    print("Time{:.2f}".format(t))
     for i, (images, imgpaths) in enumerate(train_loader):
-
+        print("Start training at Time{:.2f}".format(t))
         # Build input batch
         im1, im2, gt = utils.build_input(images, imgpaths)
 
